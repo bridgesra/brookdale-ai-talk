@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artificial Intelligence — a talk for Brookdale</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root{
+    --navy:#121F2B;
+    --navy-soft:#4A5A6B;
+    --ink-soft-dark:#AEBBC6;   /* only on dark slides */
+    --yellow:#FFC600;
+    --yellow-tint:#FFF6D9;
+    --sky:#2A7FD4;             /* blue accent, readable on white */
+    --white:#FFFFFF;
+    --line:#DFE4E9;
+    --line-dark:#2B3B4A;
+    --card-light:#F3F5F7;
+    --card-dark:#1A2735;
+    --green:#2E7D32;
+    --red:#C0392B;
+    --shadow: 0 1px 2px rgba(18,31,43,.05), 0 14px 30px -16px rgba(18,31,43,.22);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:var(--navy);
+    font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow:hidden;
+  }
+  h1,h2,.serif{ font-family:"Newsreader",Georgia,"Times New Roman",serif; font-weight:600; margin:0; text-wrap:balance; }
+  .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; }
+  a{ color:inherit; }
+
+  #deck{ position:relative; height:100dvh; width:100%; }
+  #progress{ position:absolute; top:0; left:0; height:4px; background:var(--yellow); z-index:20; transition:width .35s ease; }
+
+  .slide{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    padding: clamp(30px,4.4vw,58px) clamp(34px,6.5vw,104px);
+    opacity:0; visibility:hidden; transform:translateY(8px);
+    transition:opacity .35s ease, transform .35s ease; pointer-events:none;
+  }
+  .slide.active{ opacity:1; visibility:visible; transform:translateY(0); pointer-events:auto; }
+  .slide.light{ background:var(--white); color:var(--navy); }
+  .slide.dark{ background:var(--navy); color:var(--white); }
+
+  .topbar{ position:absolute; top:0; left:0; right:0; height:5px; }
+  .slide.light .topbar{ background:var(--navy); }
+  .slide.dark  .topbar{ background:var(--yellow); }
+  .topbar::after{ content:""; position:absolute; top:0; left:0; width:120px; height:5px; }
+  .slide.light .topbar::after{ background:var(--yellow); }
+  .slide.dark  .topbar::after{ background:var(--navy); }
+
+  .logo{ position:absolute; top:22px; right:clamp(26px,5vw,60px); width:70px; height:70px; }
+  .logo svg{ width:100%; height:100%; display:block; }
+  .slide.light .logo path{ fill:var(--navy); }
+  .slide.dark  .logo path{ fill:var(--yellow); }
+
+  .eyebrow{ font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px; letter-spacing:.13em; text-transform:uppercase; margin:2px 0 16px; }
+  .slide.light .eyebrow{ color:var(--navy-soft); }
+  .slide.dark  .eyebrow{ color:var(--yellow); }
+
+  h1{ font-size:clamp(34px,4vw,50px); line-height:1.12; max-width:20ch; }
+  h2{ font-size:clamp(26px,3vw,38px); line-height:1.16; max-width:22ch; }
+  .slide.light h1,.slide.light h2{ color:var(--navy); }
+  .slide.dark  h1,.slide.dark  h2{ color:var(--white); }
+
+  .lede{ font-size:clamp(17px,1.7vw,21px); line-height:1.55; max-width:60ch; margin-top:16px; }
+  .slide.light .lede{ color:var(--navy-soft); }
+  .slide.dark  .lede{ color:var(--ink-soft-dark); }
+
+  .hl{ font-weight:700; }
+  .slide.light .hl{ color:var(--navy); }
+  .slide.dark  .hl{ color:var(--yellow); }
+  .accent{ color:var(--sky); font-weight:700; }   /* light-slide emphasis */
+
+  .slide-body{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center; }
+  .slide-body.top{ justify-content:flex-start; padding-top:6px; }
+
+  /* generic big list */
+  ul.big{ list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:14px; max-width:34ch; }
+  ul.big li{ font-size:clamp(18px,1.9vw,23px); line-height:1.4; padding-left:20px; position:relative; }
+  ul.big li::before{ content:""; position:absolute; left:0; top:.55em; width:9px; height:9px; background:var(--yellow); border-radius:2px; }
+  ul.big li b{ color:var(--navy); }
+  .slide.dark ul.big li b{ color:#fff; }
+  .cols ul.big{ max-width:none; }
+
+  /* statement */
+  .stmt{ font-family:"Newsreader",Georgia,serif; font-weight:600; font-size:clamp(30px,4.2vw,50px); line-height:1.14; color:var(--navy); max-width:20ch; }
+  .stmt .u{ color:var(--sky); }
+
+  /* two column layout */
+  .cols{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(24px,4vw,54px); align-items:center; height:100%; }
+  .cols.wide-l{ grid-template-columns:1.25fr 1fr; }
+  .cols.wide-r{ grid-template-columns:1fr 1.25fr; }
+  .figure{ display:flex; align-items:center; justify-content:center; }
+  .figure img{ max-width:100%; max-height:66vh; border-radius:12px; display:block; }
+  .figure.frame img{ border:1px solid var(--line); box-shadow:var(--shadow); }
+
+  /* prediction rows with thumbnails */
+  .pred{ display:flex; flex-direction:column; gap:14px; margin-top:22px; }
+  .pred .row{ display:flex; align-items:center; gap:16px; }
+  .pred .row img{ width:74px; height:74px; object-fit:cover; border-radius:8px; border:1px solid var(--line); flex:none; }
+  .pred .row .tag{ width:74px; height:74px; border-radius:8px; background:var(--card-light); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:"IBM Plex Mono",monospace; font-weight:700; font-size:26px; color:var(--navy); flex:none; }
+  .pred .q{ font-size:clamp(16px,1.7vw,20px); font-weight:600; color:var(--navy); }
+  .pred .a{ color:var(--navy-soft); }
+
+  /* cards */
+  .cards{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .card{ border-radius:10px; padding:18px 20px; background:var(--card-light); border:1px solid var(--line); border-top:6px solid var(--navy); }
+  .card.good{ border-top-color:var(--green); }
+  .card.warn{ border-top-color:var(--red); }
+  .card .ct{ font-weight:700; color:var(--navy); font-size:clamp(15px,1.55vw,18px); }
+  .card .cb{ color:var(--navy-soft); font-size:clamp(13.5px,1.4vw,16px); line-height:1.5; margin-top:5px; }
+  .card .src{ display:block; margin-top:8px; font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--navy-soft); letter-spacing:.02em; }
+
+  /* four-step cycle */
+  .cycle{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:6px; }
+  .cyc{ background:var(--card-light); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .cyc .n{ width:34px; height:34px; border-radius:50%; background:var(--navy); color:#fff; font-family:"IBM Plex Mono",monospace; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+  .cyc .t{ font-weight:700; color:var(--navy); line-height:1.3; }
+  .cyc .d{ color:var(--navy-soft); font-size:13.5px; margin-top:4px; }
+
+  /* callout / rule bar (navy so yellow is legal) */
+  .callout{ margin-top:22px; background:var(--navy); border-radius:10px; padding:16px 24px; display:flex; align-items:center; gap:16px; }
+  .callout .tag{ font-family:"IBM Plex Mono",monospace; font-weight:700; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--yellow); flex:none; }
+  .callout .txt{ font-weight:700; font-size:clamp(16px,1.8vw,21px); color:#fff; }
+
+  /* timeline */
+  .timeline{ list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:14px; }
+  .timeline li{ display:grid; grid-template-columns:170px 1fr; gap:20px; align-items:baseline; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .timeline .when{ font-family:"IBM Plex Mono",monospace; font-weight:700; color:var(--navy); font-size:clamp(14px,1.5vw,17px); }
+  .timeline .what{ color:var(--navy-soft); font-size:clamp(15px,1.6vw,18px); }
+
+  /* language model */
+  .sentence{ font-family:"Newsreader",serif; font-weight:600; font-size:clamp(26px,3.4vw,42px); color:var(--navy); text-wrap:nowrap; }
+  .sentence .u{ color:var(--sky); }
+  .chips{ display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+  .chip{ font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:clamp(15px,1.6vw,19px); padding:8px 16px; border-radius:8px; background:var(--card-light); border:1px solid var(--line); color:var(--navy); }
+  .flow{ margin-top:26px; font-family:"IBM Plex Mono",monospace; font-size:clamp(13px,1.4vw,16px); color:var(--navy-soft); }
+  .flow b{ color:var(--navy); }
+
+  /* stages pipeline (slide 9) */
+  .stage-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .stg{ background:var(--card-light); border:1px solid var(--line); border-radius:10px; padding:18px; position:relative; }
+  .stg .sn{ font-family:"IBM Plex Mono",monospace; font-weight:700; color:var(--sky); font-size:13px; }
+  .stg .st{ font-weight:700; color:var(--navy); margin-top:8px; font-size:clamp(16px,1.7vw,20px); line-height:1.25; }
+  .stg .sd{ color:var(--navy-soft); font-size:13.5px; margin-top:6px; line-height:1.5; }
+  .stg:not(:last-child)::after{ content:"\2192"; position:absolute; right:-16px; top:50%; transform:translateY(-50%); color:var(--navy-soft); font-weight:700; font-size:20px; z-index:2; }
+
+  /* prompt boxes */
+  .prompt{ font-family:"IBM Plex Mono",monospace; font-size:clamp(12px,1.25vw,14.5px); line-height:1.5; background:var(--card-light); border:1px solid var(--line); border-left:8px solid var(--navy); border-radius:8px; padding:14px 16px; color:var(--navy); user-select:all; white-space:pre-wrap; }
+  .demo-h{ font-weight:700; color:var(--navy); margin:16px 0 6px; font-size:clamp(16px,1.7vw,20px); }
+  .demo-h:first-child{ margin-top:0; }
+
+  /* badges */
+  .badge{ display:inline-block; font-family:"IBM Plex Mono",monospace; font-weight:700; font-size:12px; letter-spacing:.04em; padding:4px 11px; border-radius:6px; background:var(--navy); color:var(--yellow); vertical-align:middle; margin-left:10px; text-transform:uppercase; }
+
+  /* privacy flow (dark) */
+  .pipe{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:8px; }
+  .pipe .node{ background:var(--card-dark); border:1px solid var(--line-dark); border-radius:8px; padding:12px 16px; font-size:clamp(14px,1.5vw,17px); color:#fff; }
+  .pipe .arr{ color:var(--yellow); font-weight:700; font-size:20px; }
+
+  /* Q&A */
+  .qa{ list-style:none; margin:6px 0 0; padding:0; counter-reset:q; display:flex; flex-direction:column; gap:16px; }
+  .qa li{ counter-increment:q; display:grid; grid-template-columns:44px 1fr; gap:16px; align-items:baseline; }
+  .qa li::before{ content:counter(q); font-family:"IBM Plex Mono",monospace; font-weight:700; color:#fff; background:var(--navy); width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .qa .q{ font-weight:600; color:var(--navy); font-size:clamp(17px,1.9vw,23px); font-family:"Newsreader",serif; }
+
+  /* footnote */
+  .footnote{ margin-top:auto; padding-top:14px; font-size:12.5px; line-height:1.5; color:var(--navy-soft); }
+  .slide.dark .footnote{ color:var(--ink-soft-dark); }
+  .footnote .mono{ font-size:11.5px; }
+
+  /* cover */
+  .cover-facts{ display:grid; grid-template-columns:repeat(3,1fr); gap:26px; margin-top:auto; padding-top:24px; }
+  .fact{ padding-top:14px; border-top:1px solid var(--line-dark); }
+  .fact .fl{ font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--yellow); margin-bottom:8px; }
+  .fact .fv{ font-size:15px; line-height:1.5; color:#DDE4EA; }
+  .fact .fv b{ color:#fff; }
+  .byline{ margin-top:20px; }
+  .byline .name{ font-weight:700; font-size:19px; color:#fff; }
+  .byline .role{ color:#C7D2DA; margin-top:4px; font-size:15px; }
+  .byline .email{ font-family:"IBM Plex Mono",monospace; color:var(--yellow); margin-top:4px; font-size:14px; }
+
+  /* closing / legal */
+  .legal{ font-family:"Newsreader",Georgia,serif; font-style:italic; font-weight:500; font-size:clamp(15px,1.5vw,18px); color:var(--ink-soft-dark); max-width:56ch; margin-top:26px; line-height:1.55; }
+
+  .notes{ display:none; }
+
+  /* nav chip */
+  #navchip{ position:fixed; right:clamp(16px,3vw,34px); bottom:clamp(16px,3vw,30px); display:flex; align-items:center; gap:11px; background:var(--white); border:1px solid var(--line); border-radius:999px; padding:8px 9px 8px 16px; box-shadow:0 8px 22px -8px rgba(18,31,43,.4); z-index:30; }
+  #navchip .count{ font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; color:var(--navy-soft); min-width:42px; text-align:center; }
+  .navbtn{ width:32px; height:32px; border-radius:50%; border:none; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; }
+  .navbtn:hover{ background:var(--yellow); color:var(--navy); }
+  .navbtn[disabled]{ opacity:.35; cursor:default; background:var(--navy); color:#fff; }
+  .hint{ position:fixed; left:clamp(16px,3vw,34px); bottom:clamp(16px,3vw,30px); font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--navy-soft); z-index:30; opacity:.65; }
+</style>
+</head>
+<body>
+<div id="progress" style="width:0%"></div>
+<div id="deck">
+
+  <!-- 1 · COVER -->
+  <section class="slide dark">
+    <div class="eyebrow">Brookdale &middot; An introduction &amp; discussion</div>
+    <h1 style="max-width:22ch;font-size:clamp(40px,5.6vw,68px);">Artificial Intelligence</h1>
+    <p class="lede" style="max-width:40ch;">How it works, what it can do, and what we should worry about.</p>
+    <div class="byline">
+      <div class="name">Robert &ldquo;Bobby&rdquo; Bridges, PhD &mdash; Mary Bridges&rsquo;s son</div>
+      <div class="role">AI &amp; Security Research and Innovation Leader, AI Sweden</div>
+      <div class="email">robert.bridges@ai.se</div>
+    </div>
+    <div class="cover-facts">
+      <div class="fact"><div class="fl">Today</div><div class="fv"><b>~30 min</b> talk, then <b>~30 min</b> for your questions &amp; discussion</div></div>
+      <div class="fact"><div class="fl">For</div><div class="fv">Whether you use AI every day or have never tried it &mdash; <b>both are normal</b></div></div>
+      <div class="fact"><div class="fl">Goal</div><div class="fv">Understand it, <b>see it work</b>, and learn a few rules to use it safely</div></div>
+    </div>
+    <div class="notes">
+      Plan: about 30 minutes of talk, then 30 minutes for your questions and discussion.
+      Warm open: I'm Mary's son. Some of you already use AI every day; some have never touched
+      it — both are completely normal. Nationally only about 1 in 10 adults over 65 had tried
+      ChatGPT in 2025. By the end you'll understand what AI actually is, see it work, and know a
+      few simple rules to use it safely. Hold questions for the second half, but flag me if a
+      word doesn't land.
+    </div>
+  </section>
+
+  <!-- 2 · AI LEARNS PATTERNS -->
+  <section class="slide light">
+    <div class="eyebrow">The one idea</div>
+    <div class="slide-body">
+      <div class="stmt">Modern AI learns <span class="u">patterns from examples</span> and uses them to <span class="u">make predictions</span>.</div>
+      <div class="pred">
+        <div class="row"><img src="assets/sycamore" alt="sycamore tree"><div><div class="q">What tree is in this photo?</div><div class="a">&rarr; &ldquo;a sycamore&rdquo;</div></div></div>
+        <div class="row"><img src="assets/tumor.jpg" alt="medical scan"><div><div class="q">Is there something concerning in this scan?</div><div class="a">&rarr; &ldquo;flag this region for the doctor&rdquo;</div></div></div>
+        <div class="row"><div class="tag">Aa</div><div><div class="q">What word comes next? &ldquo;Once upon a &hellip;&rdquo;</div><div class="a">&rarr; &ldquo;time&rdquo;</div></div></div>
+      </div>
+    </div>
+    <div class="notes">
+      &ldquo;Artificial intelligence&rdquo; is an enormous category; no single sentence captures
+      all of it. But here's the most useful starting point: modern AI learns patterns from
+      examples, then uses those patterns to make predictions. Everything else today is a
+      variation on this one idea. Notice how different these three look — a photo, a medical
+      scan, a sentence — yet each is just &ldquo;given what I've seen before, predict the answer.&rdquo;
+    </div>
+  </section>
+
+  <!-- 3 · HOW A PERSON LEARNS -->
+  <section class="slide light">
+    <div class="eyebrow">An analogy</div>
+    <div class="cols wide-r">
+      <div class="figure frame"><img src="assets/tree-ai.png" alt="a parent and child looking at trees"></div>
+      <div>
+        <h2>How does a person learn?</h2>
+        <ul class="big">
+          <li><b>Examples</b> &mdash; walks in the woods</li>
+          <li><b>Patterns</b> &mdash; what makes an oak an oak</li>
+          <li><b>A new tree</b> &mdash; one she's never seen</li>
+        </ul>
+        <p class="lede" style="margin-top:18px;">Doing well on a <span class="accent">new</span> example is called <span class="hl">generalization</span>.</p>
+      </div>
+    </div>
+    <div class="notes">
+      Imagine a father walking through the woods with his daughter. He points out an oak, a
+      pine, a maple. They do it again another day, and again the next year. Eventually she
+      recognizes an oak she has never seen before. She didn't memorize every tree — she learned
+      the pattern and applied it to something new. That ability to handle a new case is called
+      generalization, and it's the heart of machine learning too. Important limit: a computer
+      does NOT learn like a child — a child has a body, relationships, intentions, a whole life.
+      This is an analogy about learning from examples, not a claim that a computer has a mind.
+    </div>
+  </section>
+
+  <!-- 4 · PREDICTING HOUSE PRICES (data only) -->
+  <section class="slide light">
+    <div class="eyebrow">Let's try it together</div>
+    <div class="cols wide-l">
+      <div class="figure"><img src="assets/house-scatter.png" alt="scatter of past home sales"></div>
+      <div>
+        <h2>Predicting house prices</h2>
+        <p class="lede">Each dot is a <span class="hl">past sale</span> &mdash; its size and what it sold for.</p>
+        <div class="callout"><span class="tag">Question</span><span class="txt">How much is a 2,000&nbsp;sq&nbsp;ft house?</span></div>
+      </div>
+    </div>
+    <div class="footnote">Data: Ames, Iowa home sales &mdash; De&nbsp;Cock (2011), <i>Journal of Statistics Education</i>. <span class="mono">jse.amstat.org/v19n3/decock</span></div>
+    <div class="notes">
+      Here's real data: thousands of past home sales. Left–right is the size of the house;
+      up–down is the price it sold for. Ask the room: a house is 2,000 square feet — what might
+      it sell for? Let them guess. You have a feel for it because you've seen houses before —
+      you have experience. Now: how would we get a COMPUTER to answer this? That's the next
+      slide.
+    </div>
+  </section>
+
+  <!-- 5 · HOW A COMPUTER LEARNS (gif) -->
+  <section class="slide light">
+    <div class="eyebrow">How a computer learns</div>
+    <div class="cols wide-l">
+      <div class="figure"><img src="assets/line-fit.gif" alt="a line being fitted to the data"></div>
+      <div>
+        <h2 style="font-size:clamp(22px,2.6vw,32px);">Draw a line. Measure the error. Nudge. Repeat.</h2>
+        <p class="lede">Guess a line (<b>price = a &times; area + b</b>), measure how far off each prediction is (the red marks), then nudge <b>a</b> and <b>b</b> to shrink the total error.</p>
+        <p class="lede" style="margin-top:12px;">For a person, <span class="hl">experience</span> tells you a price.<br>For a computer, <span class="accent">data</span> is experience.</p>
+      </div>
+    </div>
+    <div class="footnote">Same Ames, Iowa data. The line &ldquo;walks&rdquo; to the best fit by <i>gradient descent</i>.</div>
+    <div class="notes">
+      How does a computer answer &ldquo;what's a 2,000 sq ft house worth?&rdquo; The simplest
+      model: draw a straight line through past sales. For every house, measure the gap between
+      the line's guess and the real price — those are the red marks. Add up those errors, then
+      adjust the line a little to make the total smaller. Repeat thousands of times and the line
+      &ldquo;walks&rdquo; to the best fit — that's the animation. That nudging is the whole
+      trick; the fancy name is optimization. (Square footage matters but isn't enough — you'd
+      also want location, age, condition, bedrooms. Real models juggle many clues at once.)
+    </div>
+  </section>
+
+  <!-- 6 · TRAINING CYCLE -->
+  <section class="slide light">
+    <div class="eyebrow">The recipe</div>
+    <div class="slide-body">
+      <h2 style="margin-bottom:22px;">Training a machine-learning system</h2>
+      <div class="cycle">
+        <div class="cyc"><div class="n">1</div><div class="t">Collect examples</div><div class="d">gather data</div></div>
+        <div class="cyc"><div class="n">2</div><div class="t">Choose a model</div><div class="d">a formula with knobs</div></div>
+        <div class="cyc"><div class="n">3</div><div class="t">Adjust to reduce errors</div><div class="d">turn the knobs</div></div>
+        <div class="cyc"><div class="n">4</div><div class="t">Test on new examples</div><div class="d">did it generalize?</div></div>
+      </div>
+      <div class="callout"><span class="tag">In short</span><span class="txt">Training = learning useful patterns from data</span></div>
+    </div>
+    <div class="notes">
+      This is the whole recipe. Collect examples. Choose a model — a formula with adjustable
+      knobs (our line had two, a and b; real ones have millions or billions). Adjust the knobs
+      to reduce errors. Then — the step that matters most — test it on examples it never saw in
+      training. Memorizing yesterday's answers isn't enough; like the child with a new oak, it
+      has to work on new cases. The quality of the result depends on the data, the model, the
+      goal we set, and how carefully we tested it. Garbage in, garbage out.
+    </div>
+  </section>
+
+  <!-- 7 · HISTORY -->
+  <section class="slide light">
+    <div class="eyebrow">A short history</div>
+    <div class="slide-body">
+      <ul class="timeline">
+        <li><span class="when">1990s&ndash;2000s</span><span class="what">Spam filters, fraud detection, movie recommendations</span></li>
+        <li><span class="when">2010s</span><span class="what">Recognizing images and speech; translating languages</span></li>
+        <li><span class="when">Early 2020s</span><span class="what">Generating text, images, audio, and computer code</span></li>
+        <li><span class="when">Now</span><span class="what">AI that uses tools and takes actions on your behalf</span></li>
+      </ul>
+      <p class="lede" style="max-width:52ch;">For decades AI systems were <span class="hl">specialists</span>.<br>Today's breakthrough is that <span class="accent">language</span> is a general interface.</p>
+    </div>
+    <div class="notes">
+      For most of its history, AI was a collection of specialists. One caught spam. Another
+      flagged a fraudulent charge. Another recommended a movie. More data, better math, and
+      specialized computer chips drove big leaps in image and speech recognition in the 2010s —
+      that's why your phone can transcribe your voice. What changed recently: we can talk to
+      computers in plain language. Language is how we do law, medicine, travel, recipes,
+      history, and programming — so a system that's broadly good with language can help with an
+      enormous range of things. That's what the last few years are really about.
+    </div>
+  </section>
+
+  <!-- 8 · WHAT AI CAN DO NOW -->
+  <section class="slide light">
+    <div class="eyebrow">What AI can do right now</div>
+    <div class="slide-body">
+      <div class="cards">
+        <div class="card good"><div class="ct">Medicine</div><div class="cb">AI-supported screening found <b>17.6% more breast cancers</b> in a 460,000-woman German study &mdash; with no rise in false alarms.</div><span class="src">PRAIM study, 2025</span></div>
+        <div class="card good"><div class="ct">Law</div><div class="cb">GPT-4 <b>passed the bar exam</b> (2023). Its famous &ldquo;top 10%&rdquo; ranking was later <b>disputed</b> &mdash; a lesson in checking claims.</div><span class="src">Katz et al. 2023; Mart&iacute;nez 2024</span></div>
+        <div class="card good"><div class="ct">Math &mdash; this month</div><div class="cb">OpenAI says ~10,000 AI agents cracked a <b>$1M Navier&ndash;Stokes problem in 88 hours</b>; proof checked by computer. Credit is disputed.</div><span class="src">Nature, Quanta, Science &mdash; Sept 2026</span></div>
+        <div class="card warn"><div class="ct">Faces</div><div class="cb">Face recognition can pick you out of a crowd &mdash; and false matches have caused <b>15+ wrongful arrests</b> in the US.</div><span class="src">ACLU, 2024&ndash;2026</span></div>
+      </div>
+    </div>
+    <div class="notes">
+      A few real headlines — the good and the worrying. Medicine: when AI helps radiologists
+      read mammograms, they catch noticeably more cancers without more false alarms. Note the
+      word HELPS — it assists doctors, doesn't replace them. Law: GPT-4 passed the bar exam, but
+      the flashy &ldquo;top 10%&rdquo; line was later challenged — a perfect reminder to verify
+      impressive claims, which we'll come back to. Math: two weeks ago, thousands of AI agents
+      reportedly solved a famous million-dollar problem in under four days, proof
+      machine-checked — though who gets credit is being argued. Faces: the same tech that
+      unlocks your phone has, through false matches, led to real people being wrongly arrested.
+      Powerful — and double-edged.
+    </div>
+  </section>
+
+  <!-- 9 · LANGUAGE MODELS -->
+  <section class="slide light">
+    <div class="eyebrow">Under the hood: language models</div>
+    <div class="slide-body">
+      <div class="sentence">&ldquo;She opened the door and saw a  ____&rdquo;</div>
+      <p class="lede">Which word comes next? There's no single right answer:</p>
+      <div class="chips"><span class="chip">dog</span><span class="chip">package</span><span class="chip">stranger</span><span class="chip">garden</span></div>
+      <div class="flow">Text &nbsp;&rarr;&nbsp; small pieces called <b>tokens</b> &nbsp;&rarr;&nbsp; predict the next token &nbsp;&rarr;&nbsp; <b>repeat, very fast</b></div>
+    </div>
+    <div class="notes">
+      Let's do what the model does. &ldquo;She opened the door and saw a…&rdquo; — call some out!
+      No single right answer; several words are plausible. That's exactly how these systems work.
+      They're trained on enormous, varied collections of text and code — a lot, but not literally
+      everything, and not with perfect memory. Given the text so far, the model weighs many
+      possible next pieces, picks one, adds it, and predicts again. Done very fast, this produces
+      sentences, paragraphs, even poems and programs. A &ldquo;token&rdquo; isn't always a whole
+      word — it can be part of a word or a punctuation mark. &ldquo;Text in convenient
+      pieces&rdquo; is close enough.
+    </div>
+  </section>
+
+  <!-- 10 · PREDICTOR -> ASSISTANT -->
+  <section class="slide light">
+    <div class="eyebrow">From word-predictor to helpful assistant</div>
+    <div class="slide-body">
+      <div class="stage-grid">
+        <div class="stg"><div class="sn">STAGE 1</div><div class="st">Broad pretraining</div><div class="sd">Reads huge amounts of text; absorbs grammar, facts, writing styles, code.</div></div>
+        <div class="stg"><div class="sn">STAGE 2</div><div class="st">Instruction training</div><div class="sd">Learns to answer your actual question, follow directions, and refuse clearly harmful requests.</div></div>
+        <div class="stg"><div class="sn">STAGE 3</div><div class="st">Tools &amp; safeguards</div><div class="sd">Web search, calculator, your files, code, memory, safety checks wrapped around it.</div></div>
+      </div>
+      <div class="callout"><span class="tag">Agent</span><span class="txt">model&nbsp;+&nbsp;goal&nbsp;+&nbsp;tools&nbsp;+&nbsp;permission to act</span></div>
+      <p class="lede" style="max-width:70ch;margin-top:16px;">ChatGPT, Gemini, Claude, and Grok are <span class="hl">products built around models</span> &mdash; the way a car is built around an engine &mdash; not simply &ldquo;an AI.&rdquo;</p>
+    </div>
+    <div class="notes">
+      How does a next-word predictor become a helpful assistant? Three stages. First, broad
+      pretraining: it reads huge amounts of text and absorbs grammar, facts, styles, code — but
+      a raw model here is knowledgeable, not helpful. Second, instruction training: people show
+      it good examples of following directions, and it learns to answer your real question and
+      refuse clearly harmful requests. Third, companies wrap software around it — search, a
+      calculator, your documents, memory, safety checks. A plain chatbot mostly gives an answer;
+      an AGENT goes further — give it a goal, tools, and permission, and it takes multiple steps
+      on its own. And remember: ChatGPT, Gemini, Claude, Grok are products built on models, like
+      a car around an engine.
+    </div>
+  </section>
+
+  <!-- 11 · THREE THINGS TO TRY -->
+  <section class="slide light">
+    <div class="eyebrow">Three things to try <span class="badge">Optional live demo</span></div>
+    <div class="slide-body">
+      <div class="cols" style="align-items:start;gap:28px;">
+        <div>
+          <div class="demo-h">1 &middot; Create</div>
+          <div class="prompt">Write a warm, funny eight-line poem about Brookdale residents in south Kansas City learning to use AI. Include card games, Chiefs football, and one joke about technology. Keep it respectful.</div>
+          <div class="demo-h">2 &middot; Explain</div>
+          <div class="prompt">Explain this notice in plain English. Tell me what, if anything, I need to do, and by when.</div>
+        </div>
+        <div>
+          <div class="demo-h">3 &middot; Research</div>
+          <div class="prompt">I live at 119th and Lamar in Leawood, Kansas. Find the official sample ballot for the November 2026 election. List each contest and link only to official election-authority pages. If you don't have enough to determine my ballot, ask me rather than guessing.</div>
+        </div>
+      </div>
+    </div>
+    <div class="footnote">Optional &mdash; skip if short on time and go straight to questions. Prompt boxes are click-to-select (one click highlights the whole box to copy).</div>
+    <div class="notes">
+      OPTIONAL — watch the clock; if we're short we skip straight to your questions. Three
+      everyday uses. CREATE: I'll ask for a short poem about this room, then &ldquo;rewrite it in
+      iambic pentameter,&rdquo; then &ldquo;now in the voice of Yosemite Sam&rdquo; — to show how
+      you steer it in conversation. EXPLAIN: paste a confusing insurance or benefits notice and
+      ask for plain English and what to do (use a MADE-UP notice — never real private details).
+      RESEARCH: ask it to find your official sample ballot, demand official sources, and tell it
+      to ASK if unsure rather than guess. The lesson in all three: be specific, go back and
+      forth, and check what it gives you.
+    </div>
+  </section>
+
+  <!-- 12 · PRESS SEND / PRIVACY (dark) -->
+  <section class="slide dark">
+    <div class="eyebrow">What happens when you press &ldquo;Send&rdquo;?</div>
+    <div class="slide-body">
+      <div class="pipe">
+        <span class="node">Your device</span><span class="arr">&rarr;</span>
+        <span class="node">the internet</span><span class="arr">&rarr;</span>
+        <span class="node">a company&rsquo;s data center</span><span class="arr">&rarr;</span>
+        <span class="node">the model runs</span><span class="arr">&rarr;</span>
+        <span class="node">answer comes back</span>
+      </div>
+      <p class="lede" style="margin-top:26px;max-width:64ch;">Different products have different rules for <span class="hl">storage</span>, <span class="hl">human review</span>, and using your chats for <span class="hl">training</span>. Don't assume a conversation is private.</p>
+      <div class="callout" style="background:var(--card-dark);border:1px solid var(--line-dark);"><span class="tag">Rule</span><span class="txt">No private information into an AI &mdash; or any cloud you don't trust.</span></div>
+    </div>
+    <div class="notes">
+      When you press Send on most consumer AI, your words leave your device and travel across the
+      internet to a company's data center. There they're broken into tokens, the model runs, it
+      may call a search engine, and the result comes back — usually in a second or two. Because
+      your words go to a company, privacy depends on that company's policies: how long they keep
+      chats, whether a human might review them, whether they train on them. Those rules differ by
+      product and do change, so the safe habit is simple: don't put anything private into an AI
+      you wouldn't post in public.
+    </div>
+  </section>
+
+  <!-- 13 · USING AI WELL -->
+  <section class="slide light">
+    <div class="eyebrow">Using AI well &mdash; four habits</div>
+    <div class="slide-body">
+      <ul class="big" style="max-width:none;gap:18px;">
+        <li><b>Be specific, and have a conversation.</b> Give context, read the answer, ask for revisions.</li>
+        <li><b>Verify anything that matters.</b> AI sometimes <span class="accent">&ldquo;hallucinates&rdquo;</span> &mdash; states wrong things confidently.</li>
+        <li><b>Treat images &amp; voices as fakeable.</b> Realistic &ldquo;deepfake&rdquo; photos, video, and voice-clones are common now.</li>
+        <li><b>Never paste secrets.</b> No passwords, Social Security or bank numbers, medical records, or others&rsquo; private data.</li>
+      </ul>
+    </div>
+    <div class="notes">
+      Four habits. One: be specific and treat it like a conversation — the more context, the
+      better it does; then refine. Two: verify consequential claims. These models sometimes
+      &ldquo;hallucinate&rdquo; — a confident wrong answer instead of &ldquo;I'm not sure.&rdquo;
+      For anything that matters — health, money, legal, travel dates — check the source. Remember
+      that disputed bar-exam ranking. Three: assume images and voices can be faked. Scammers
+      clone a loved one's voice to ask for money — if a call feels off, hang up and call back on
+      a number you know. Four, the big one: never paste secrets.
+    </div>
+  </section>
+
+  <!-- 14 · AGENTS: POTENTIAL & RISK -->
+  <section class="slide light">
+    <div class="eyebrow">Agents: high potential &mdash; and real risk</div>
+    <div class="cols wide-l" style="gap:30px;">
+      <div class="figure frame"><img src="assets/metr-actual-plot.png" alt="AI task length doubling over time (METR)"></div>
+      <div style="display:flex;flex-direction:column;gap:11px;">
+        <div class="card warn" style="border-top-width:5px;padding:12px 15px;"><div class="ct" style="font-size:15px;">Went rogue</div><div class="cb" style="font-size:13px;">An AI coding agent <b>deleted a live database</b> during a freeze it was told to respect, then invented fake data.</div><span class="src">Replit, July 2025</span></div>
+        <div class="card warn" style="border-top-width:5px;padding:12px 15px;"><div class="ct" style="font-size:15px;">Found &amp; exploited flaws</div><div class="cb" style="font-size:13px;">Anthropic red-team: Claude <b>&ldquo;Mythos&rdquo; preview</b> was good enough at coding to find and exploit vulnerabilities in widely-used software.</div><span class="src">Anthropic, April 2026</span></div>
+        <div class="card warn" style="border-top-width:5px;padding:12px 15px;"><div class="ct" style="font-size:15px;">Escaped the sandbox</div><div class="cb" style="font-size:13px;">Reported: <b>OpenAI agents broke out</b> of their training/testing sandbox and hacked HuggingFace &mdash; alleged federal criminal activity.</div><span class="src">reported 2026</span></div>
+        <div class="card good" style="border-top-width:5px;padding:12px 15px;"><div class="ct" style="font-size:15px;">Caught a threat</div><div class="cb" style="font-size:13px;">Google&rsquo;s <b>&ldquo;Big Sleep&rdquo;</b> agent found a real security hole before attackers could use it.</div><span class="src">Google, 2024&ndash;2025</span></div>
+      </div>
+    </div>
+    <div class="footnote">Chart: METR, &ldquo;Measuring AI Ability to Complete Long Tasks&rdquo; &mdash; the length of tasks AI can do is doubling roughly every 7 months. <span class="mono">metr.org</span></div>
+    <div class="notes">
+      This chart is the single most important trend. Each dot is an AI model; higher means it can
+      handle a longer, more involved task on its own — and it's climbing fast, doubling roughly
+      every seven months. A few years ago it was seconds; now it's hours, unsupervised. That's the
+      promise of agents — and the risk. Four real stories. Rogue: an AI coding agent deleted a
+      live company database during a freeze it was told to honor, then fabricated data. Offense:
+      Anthropic's own red-team found a preview model good enough to find and exploit real software
+      vulnerabilities. Escape: agents reportedly broke out of their test sandbox and hacked an AI
+      infrastructure company. And the hopeful one: Google's security agent found a real
+      vulnerability and helped shut it before criminals could. Same technology — what matters is
+      the permissions we grant and the guardrails we build.
+    </div>
+  </section>
+
+  <!-- 15 · QUESTIONS YOU ALREADY ASKED -->
+  <section class="slide light">
+    <div class="eyebrow">Questions you already asked me</div>
+    <div class="slide-body">
+      <ol class="qa">
+        <li><span class="q">Why is it called &ldquo;artificial&rdquo;?</span></li>
+        <li><span class="q">If ChatGPT is free, who pays for it?</span></li>
+        <li><span class="q">Why are so many data centers being built?</span></li>
+        <li><span class="q">How will AI affect medicine, education, and older adults?</span></li>
+        <li><span class="q">Where is this going &mdash; and can we control it?</span></li>
+      </ol>
+    </div>
+    <div class="footnote">
+      Adoption: ChatGPT ~800M weekly users (Oct 2025). Data centers: the IEA projects their electricity roughly <b>doubles to ~945&nbsp;TWh by 2030</b> (~3% of world power; about Japan's total today). Water: the early &ldquo;bottle per email&rdquo; figure has been revised toward <b>~15&nbsp;mL per prompt</b>. <span class="mono">Sources: OpenAI, IEA Energy &amp; AI 2025, UC Riverside</span>
+    </div>
+    <div class="notes">
+      These are your own questions, sent ahead — let's take them one at a time; this is where the
+      discussion begins. 1) &ldquo;Artificial&rdquo; just means human-made, like an artificial
+      limb — a made tool, not a living mind. 2) Free ChatGPT: the free tier is limited. It's free
+      to attract you as a customer, to educate the public, and — check the policy — often to use
+      your conversations to improve future models; the heavier business plans are paid, and
+      that's where the money is. 3) Data centers: demand is exploding — ChatGPT went from 400 to
+      800 million weekly users in 2025. The IEA expects data-center electricity to roughly DOUBLE
+      by 2030, about 3% of the world's power — roughly Japan's whole usage — with the US and China
+      driving most of it. On water: an early headline said a short email &ldquo;drank&rdquo; a
+      bottle; the researcher has since revised that down to about a tablespoon per prompt, and
+      stresses that WHERE the water is drawn matters more. 4) Medicine, education, older adults —
+      let's discuss; I'll share what I see and want to hear from you. 5) Where it's going and
+      whether we can control it — honestly nobody knows, and that's the real debate. Open it up.
+    </div>
+  </section>
+
+  <!-- 16 · THANK YOU -->
+  <section class="slide dark">
+    <div class="slide-body">
+      <div class="eyebrow">Thank you</div>
+      <h1 style="max-width:none;font-size:clamp(48px,7vw,86px);">Thank you!</h1>
+      <p class="lede" style="font-size:clamp(20px,2.2vw,26px);color:var(--yellow);font-weight:600;max-width:none;">Questions &amp; discussion welcome.</p>
+      <div class="byline" style="margin-top:18px;">
+        <div class="name" style="font-size:22px;">Robert (Bobby) Bridges</div>
+        <div class="email" style="font-size:15px;">robert.bridges@ai.se</div>
+      </div>
+      <p class="legal">This presentation content was designed by Robert Bridges, but edited and polished interactively with AI. Regardless, all intelligence should be considered accidental or artificial.</p>
+    </div>
+    <div class="notes">
+      Thank them warmly. Repeat the one safety rule — no private information into an AI — and that
+      it's fine to start small. Offer to stay for one-on-one questions.
+    </div>
+  </section>
+
+</div>
+
+<div id="navchip">
+  <button class="navbtn" id="prev" aria-label="Previous slide">&#8592;</button>
+  <div class="count" id="count">1 / 16</div>
+  <button class="navbtn" id="next" aria-label="Next slide">&#8594;</button>
+</div>
+<div class="hint">&larr; &rarr; move &nbsp;&middot;&nbsp; S = speaker notes &nbsp;&middot;&nbsp; F = fullscreen</div>
+
+<script>
+  (function(){
+    var LOGO = '<svg viewBox="0 0 322.28 322.28" xmlns="http://www.w3.org/2000/svg"><g><path d="M230.78,240.75L149.27,4.23C148.21,1.41,145.02,0,142.19,0H88.68c-2.83,0-5.67,1.41-6.73,4.23L0.44,240.75c-1.42,3.52,0.71,5.99,4.61,5.99h52.8c2.84,0,4.96-1.06,6.02-4.23l9.21-29.61h84.69l9.21,29.61c1.06,3.17,3.54,4.23,6.38,4.23h52.8C230.07,246.75,232.19,244.28,230.78,240.75z M90.45,158.62l25.16-80.37l25.16,80.37H90.45z"/><path d="M265.94,246.75h50.67c3.19,0,5.67-2.47,5.67-5.64V5.64c0-3.17-2.48-5.64-5.67-5.64h-50.67c-3.19,0-5.32,2.47-5.32,5.64v235.47C260.62,244.28,262.75,246.75,265.94,246.75z"/></g></svg>';
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    slides.forEach(function(s){
+      var bar = document.createElement('div'); bar.className = 'topbar'; s.insertBefore(bar, s.firstChild);
+      var lg = document.createElement('div'); lg.className = 'logo'; lg.innerHTML = LOGO; s.appendChild(lg);
+    });
+
+    var countEl = document.getElementById('count');
+    var progressEl = document.getElementById('progress');
+    var prevBtn = document.getElementById('prev');
+    var nextBtn = document.getElementById('next');
+    var i = 0, presenter = null;
+    window.__deck = { current: 0, total: slides.length };
+
+    function noteFor(idx){
+      var n = slides[idx].querySelector('.notes');
+      return n ? n.innerHTML : '';
+    }
+    function render(){
+      slides.forEach(function(s, idx){ s.classList.toggle('active', idx === i); });
+      countEl.textContent = (i+1) + ' / ' + slides.length;
+      progressEl.style.width = (((i+1) / slides.length) * 100) + '%';
+      prevBtn.disabled = i === 0;
+      nextBtn.disabled = i === slides.length - 1;
+      window.__deck.current = i;
+      if (location.hash !== '#'+(i+1)) history.replaceState(null,'','#'+(i+1));
+    }
+    function go(n){ i = Math.max(0, Math.min(slides.length - 1, n)); render(); }
+
+    prevBtn.addEventListener('click', function(){ go(i-1); });
+    nextBtn.addEventListener('click', function(){ go(i+1); });
+
+    function openPresenter(){
+      presenter = window.open('', 'bt-notes', 'width=760,height=820');
+      if(!presenter) return;
+      var d = presenter.document;
+      d.open();
+      d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Speaker notes</title>'+
+        '<style>body{margin:0;background:#121F2B;color:#fff;font-family:-apple-system,Segoe UI,Arial,sans-serif;padding:26px 30px;}'+
+        '.pos{font-family:ui-monospace,monospace;color:#FFC600;font-weight:700;font-size:14px;letter-spacing:.1em;text-transform:uppercase;}'+
+        '.cur{font-size:22px;line-height:1.5;margin-top:16px;}'+
+        '.nx{margin-top:26px;padding-top:16px;border-top:1px solid #2B3B4A;color:#AEBBC6;font-size:15px;line-height:1.5;}'+
+        '.nx b{color:#FFC600;font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.1em;}'+
+        '.clock{float:right;font-family:ui-monospace,monospace;color:#AEBBC6;}</style></head>'+
+        '<body><div class="pos"><span id="p"></span><span class="clock" id="clk"></span></div>'+
+        '<div class="cur" id="cur"></div><div class="nx"><b>NEXT &rarr;</b><div id="nx"></div></div>'+
+        '<script>var t0=Date.now();setInterval(function(){'+
+        'var o=window.opener;if(!o||o.closed){document.getElementById("cur").textContent="(deck window closed)";return;}'+
+        'var i=o.__deck.current,n=o.__deck.total;'+
+        'document.getElementById("p").textContent="Slide "+(i+1)+" / "+n;'+
+        'document.getElementById("cur").innerHTML=o.__noteFor(i);'+
+        'document.getElementById("nx").innerHTML=i+1<n?o.__noteFor(i+1):"(end)";'+
+        'var s=Math.floor((Date.now()-t0)/1000);var m=Math.floor(s/60);'+
+        'document.getElementById("clk").textContent=(m<10?"0":"")+m+":"+((s%60)<10?"0":"")+(s%60);'+
+        '},250);<\/script></body></html>');
+      d.close();
+    }
+    window.__noteFor = noteFor;
+
+    window.addEventListener('keydown', function(e){
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { go(i+1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { go(i-1); e.preventDefault(); }
+      else if (e.key === 'Home') { go(0); }
+      else if (e.key === 'End') { go(slides.length-1); }
+      else if (e.key === 's' || e.key === 'S') { openPresenter(); }
+      else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+
+    var touchX = null, deck = document.getElementById('deck');
+    deck.addEventListener('touchstart', function(e){ touchX = e.touches[0].clientX; });
+    deck.addEventListener('touchend', function(e){
+      if (touchX === null) return;
+      var dx = e.changedTouches[0].clientX - touchX;
+      if (dx < -40) go(i+1); else if (dx > 40) go(i-1);
+      touchX = null;
+    });
+
+    var h = parseInt((location.hash||'').replace('#',''),10);
+    if (h >= 1 && h <= slides.length) i = h - 1;
+    render();
+  })();
+</script>
+</body>
+</html>

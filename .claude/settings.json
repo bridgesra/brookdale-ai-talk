@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/*.key)",
+      "Read(credentials.json)",
+      "Read(secrets/**)",
+      "Read(node_modules/**)",
+      "Read(dist/**)",
+      "Read(build/**)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/statusline.sh\""
+  },
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"
+  }
+}
